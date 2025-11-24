@@ -22,11 +22,30 @@ final class ServiceProvider extends BaseServiceProvider implements DeferrablePro
      */
     public function register(): void
     {
-        $this->app->singleton(ClientContract::class, static function (): Client {
-            $apiKey = config('openai.api_key');
-            $organization = config('openai.organization');
-            $project = config('openai.project');
-            $baseUri = config('openai.base_uri');
+        $config = config('openai', []);
+
+        if (!empty($config['connections']) && is_array($config['connections']))
+        {
+            // New multi-config array format
+            foreach ($config['connections'] as $connection)
+                $this->registerClient($connection, $config['default']);
+        }
+        else
+        {
+            // Original Single Client config format
+            $this->registerClient($config);
+        }
+    }
+
+    public function registerClient($config, $name, $default = 'openai')
+    {
+        $name = 'openai.' . $name;
+
+        $this->app->singleton($name, static function (): Client {
+            $apiKey = $config['api_key'];
+            $organization = $config['organization'];
+            $project = $config['project'];
+            $baseUri = $config['base_uri'];
 
             if (! is_string($apiKey) || ($organization !== null && ! is_string($organization))) {
                 throw ApiKeyIsMissing::create();
@@ -35,7 +54,7 @@ final class ServiceProvider extends BaseServiceProvider implements DeferrablePro
             $client = OpenAI::factory()
                 ->withApiKey($apiKey)
                 ->withOrganization($organization)
-                ->withHttpClient(new \GuzzleHttp\Client(['timeout' => config('openai.request_timeout', 30)]));
+                ->withHttpClient(new \GuzzleHttp\Client(['timeout' => config['request_timeout', 30]]));
 
             if (is_string($project)) {
                 $client->withProject($project);
@@ -48,8 +67,11 @@ final class ServiceProvider extends BaseServiceProvider implements DeferrablePro
             return $client->make();
         });
 
-        $this->app->alias(ClientContract::class, 'openai');
-        $this->app->alias(ClientContract::class, Client::class);
+        if ($name == $default)
+        {
+            $this->app->alias($name, 'openai');
+            $this->app->alias($name, Client::class);
+        }
     }
 
     /**
