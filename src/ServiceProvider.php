@@ -27,13 +27,13 @@ final class ServiceProvider extends BaseServiceProvider implements DeferrablePro
         if (!empty($config['connections']) && is_array($config['connections']))
         {
             // New multi-config array format
-            foreach ($config['connections'] as $connection)
-                $this->registerClient($connection, $config['default']);
+            foreach ($config['connections'] as $name => $connection)
+                $this->registerClient($connection, $name, $config['default']);
         }
         else
         {
             // Original Single Client config format
-            $this->registerClient($config);
+            $this->registerClient($config, 'openai');
         }
     }
 
